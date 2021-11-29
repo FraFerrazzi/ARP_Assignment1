@@ -11,12 +11,15 @@
 
 int main()
 {
+	//initialize pid motor x and pid motor z
+	int pidmotorx, pidmotorz;
 	// initialize file descriptors for pipes
 	int fd_insp;	
 	int fd_motor_x;	
 	int fd_motor_z;
 	int fd_motor_x_to_insp;
 	int fd_motor_z_to_insp;
+
 	// initialize the temporary file
 	char* f_insp = "/tmp/f_insp";
 	char* f_motor_x = "/tmp/f_motor_x";
@@ -25,80 +28,57 @@ int main()
 	char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
 	
 	// get the PID of the inspection console and send it to the watchdog
-	int pid = getpid();		
+	int pid = getpid();
  	printf("inspection console says: my pid is  %d\n", pid);
  	fflush(stdout);	
  	fd_insp = open(f_insp, O_WRONLY);
-	if (fd_insp < 0) {
-        perror(f_insp);
-        return -1;
-    }
  	write(fd_insp, &pid, sizeof(pid));
  	close(fd_insp);
-
-	// initialize variables
-	int pidmotorx;
-	int pidmotorz;
+	
+	fd_motor_x = open(f_motor_x, O_RDONLY);
+	fd_motor_z = open(f_motor_z, O_RDONLY);
+	float pos_x;
+	float pos_z;
 
 	// get motor x and motor z PIDS for signal handling
- 	fd_motor_x_to_insp = open(f_motor_x_to_insp, O_RDONLY);
+	fd_motor_x_to_insp = open(f_motor_x_to_insp, O_RDONLY);
 	if (fd_motor_x_to_insp < 0) {
-        perror(fd_motor_x_to_insp);
+        perror("fd_motor_x_to_insp");
         return -1;
     }
  	read(fd_motor_x_to_insp, &pidmotorx, sizeof(pidmotorx));
  	close(fd_motor_x_to_insp);
- 	printf("pid motor x: %s\n", pidmotorx);
+ 	printf("pid motor x: %d\n", pidmotorx);
  	fflush(stdout);
 
 	fd_motor_z_to_insp = open(f_motor_z_to_insp, O_RDONLY);
 	if (fd_motor_z_to_insp < 0) {
-        perror(fd_motor_z_to_insp);
+        perror("fd_motor_z_to_insp");
         return -1;
     }
  	read(fd_motor_z_to_insp, &pidmotorz, sizeof(pidmotorz));
  	close(fd_motor_z_to_insp);
- 	printf("pid motor z: %s\n", pidmotorz);
+ 	printf("pid motor z: %d\n", pidmotorz);
  	fflush(stdout);
-
-	// open pipes used for the select for motors
-	fd_motor_x = open(f_motor_x, O_RDONLY);
-		if (fd_motor_x < 0) {
-        perror(f_motor_x);
-        return -1;
-    }
-	fd_motor_z = open(f_motor_z, O_RDONLY);
-		if (fd_motor_z < 0) {
-        perror(f_motor_z);
-        return -1;
-    }
-	int retval;
-	float pos_x;
-	float pos_z;
-	fd_set fds;
-
-	//defining select function's variables for signals handling
-	char comm_inspect[2];
-	int retval_s;
-	fd_set fd_in;
  	
+	//defining select function's variables
+	char comm_inspect;
+	int n;
+	fd_set fd_in;
+
 	for(;;)
 	{
+
 		FD_ZERO(&fd_in);
 		FD_SET(STDIN_FILENO, &fd_in);
 		struct timeval timeout;
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 0;
-
-		retval_s = select(STDIN_FILENO+1, &fd_in, NULL, NULL, &timeout);
-
-		if (retval_s == -1)
-			perror("select()");
-			return -1;
+		select(STDIN_FILENO+1, &fd_in, NULL, NULL, &timeout);
 
 		if (FD_ISSET(STDIN_FILENO, &fd_in))
 		{
-			read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
+			n = read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
 			switch(comm_inspect)
 			{
 				case 'r':
@@ -113,25 +93,17 @@ int main()
 				
 				default:
 				break;
-			}		
+			}
+				
 		}
+		//printf("command is %c\n", comm_inspect[0]);	
 
+		fd_set fds;
 		int maxfd;
 		int res;
 		char bufdispx[20];
 		char bufdispz[20];
 		struct timeval time;
-
-		//sigset_t emptyset, blockset;
-
-		//sigemptyset(&blockset);
-		//sigaddset(&blockset, SIGINT);
-		//sigprocmask(SIG_BLOCK, &blockset, NULL);
-
-		//sa.sa_handler = handler;
-		//sa.sa_flags = 0;
-		//sigemptyset(&sa.sa_mask);
-		//sigaction(SIGINT, &sa, NULL);
 
 		FD_ZERO(&fds); // clear FD for the select
 		FD_SET(fd_motor_x, &fds);
@@ -141,23 +113,20 @@ int main()
 
 		maxfd = fd_motor_x > fd_motor_z ? fd_motor_x : fd_motor_z;
 
-		//sigemptyset(&emptyset);
-		retval = select(maxfd+1, &fds, NULL, NULL, &time);
+		select(maxfd+1, &fds, NULL, NULL, &time);
 
-		if (retval == -1)
-			perror("select()");
-			return -1;
+		//system("clear");
 
 		if (FD_ISSET(fd_motor_x, &fds)) // read from motor x file descriptor
 		{
 			res = read(fd_motor_x, bufdispx, sizeof(bufdispx));
-			pos_x = atoi(bufdispx);
+			pos_x = atof(bufdispx);
 		}
 
 		if (FD_ISSET(fd_motor_z, &fds))
 		{
 			res = read(fd_motor_z, bufdispz, sizeof(bufdispz));
-			pos_z = atoi(bufdispz);
+			pos_z = atof(bufdispz);
 		}
 		printf("Motor X position: %f;        Motor Z position: %f;\n", pos_x, pos_z);
 		sleep(PAUSE);
@@ -168,7 +137,5 @@ int main()
 	unlink(f_motor_x);
 	unlink(f_motor_z);
 	unlink(f_insp);
-	unlink(f_motor_z_to_insp);
-	unlink(f_motor_x_to_insp);
 	return 0;
 }

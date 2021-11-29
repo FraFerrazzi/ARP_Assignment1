@@ -12,7 +12,7 @@
 
 time_t last_sig;
 
-void sig_hendler(int signo)
+void sig_handler(int signo)
 {
 	if (signo==SIGUSR1)
 	{
@@ -22,46 +22,52 @@ void sig_hendler(int signo)
 
 int main(int argc, char * argv[])
 {
+	// initialize file descriptor for pipe
+	int fd_comm;	
+	int fd_insp;
+	int fd_motor_x;	
+	int fd_motor_z;	
+
+	// initialize the temporary file
+	char* f_comm = "/tmp/f_comm";
+	char* f_insp = "/tmp/f_insp";
+	char* f_motor_x = "/tmp/f_motor_x"; 
+	char* f_motor_z = "/tmp/f_motor_z";
+
 	// getting watchdog PID
 	int wd_pid=getpid();
-	printf("wahtchdog says: my pid is %d\n", wd_pid);
+	printf("watchdog says: my pid is %d\n", wd_pid);
 	fflush(stdout);
 
 	// importing command process PID and display it on watchdog konsole
-	int fd_comm;
-	int pidcomm;		
- 	char* f_comm = "/tmp/f_comm";
+
+	int pidcomm;
   	fd_comm = open(f_comm, O_RDONLY);
- 	read(fd_comm, &pidcomm, sizeof(wd_pid));
+ 	read(fd_comm, &pidcomm, sizeof(pidcomm));
  	close(fd_comm);
- 	printf("pid comm: %d\n", pidcomm);
+	printf("pid comm: %d\n", pidcomm);
  	fflush(stdout);
 	
-	// importing inspection process PID and display it on watchdog konsole
-	int fd_insp;	
-	int pidinsp;	
- 	char* f_insp = "/tmp/f_insp";
+ 	// importing inspection process PID and display it on watchdog konsole
+ 	int pidinsp;  	
  	fd_insp = open(f_insp, O_RDONLY);
- 	read(fd_insp, &pidinsp, sizeof(pidinsp));
- 	close(fd_insp);	
+ 	read(fd_insp, &pidinsp,sizeof(pidinsp));
+ 	close(fd_insp);
  	printf("pid inspection: %d\n", pidinsp);
 	fflush(stdout);
-
-	// importing motor x PID and display it on watchdog konsole
-	int fd_motor_x;	
-	int pidmotorx;	
- 	char* f_motor_x = "/tmp/f_motor_x"; 	
+	
+	// importing motor x pid and display it on watchdog konsole
+	//int pidmotorx; 	
+	int pidmotorx;
  	fd_motor_x = open(f_motor_x, O_RDONLY);
  	read(fd_motor_x, &pidmotorx, sizeof(pidmotorx));
  	close(fd_motor_x);
  	printf("pid motor x: %d\n", pidmotorx);
  	fflush(stdout);
- 	
- 	// importing motor z PID and display it on watchdog konsole
-	int fd_motor_z;
-	int pidmotorz;		
- 	char* f_motor_z = "/tmp/f_motor_z";
- 	fd_motor_z = open(f_motor_z, O_RDONLY);
+	 	
+ 	// importing motor z pid and display it on watchdog konsole
+    int pidmotorz;
+	fd_motor_z = open(f_motor_z, O_RDONLY);
  	read(fd_motor_z, &pidmotorz, sizeof(pidmotorz));
  	close(fd_motor_z);
  	printf("pid motor z: %d\n", pidmotorz);
@@ -69,21 +75,28 @@ int main(int argc, char * argv[])
 
 	// sending watchdog PID to command process for signal handling
 	fd_comm = open(f_comm, O_WRONLY);
-	write(fd_comm, &wd_pid, sizeof(wd_pid));<
+	write(fd_comm, &wd_pid, sizeof(wd_pid));
 	close(fd_comm);
-
-	signal(SIGUSR1, sig_hendler);
+	//unlink(f_comm);//debug
+	
+	//REACTION TO THE SIGNALS
+	struct sigaction sa;
+	//set sa to zero using the memset()
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = &sig_handler;
+	sa.sa_flags = SA_RESTART;
+	sigaction(SIGUSR1, &sa, NULL); 
 	last_sig = time(NULL);
 
 	while(1)
 	{
-		sleep(1); // perchè lo sleep?
+		sleep(1);
 		fflush(stdout);
 		if ( difftime(time(NULL),last_sig) > N)
 			{
 				printf("nothing has happened...\n");
 				printf("RESET THE PROCESSES\n");
-			
+				
 				kill(pidmotorx, SIGINT);
 				kill(pidmotorz, SIGINT);				
 			} 
@@ -91,7 +104,7 @@ int main(int argc, char * argv[])
 			{
 				printf("time reset\n");
 			}
-			
+		
 				
 	}
 	unlink(f_comm);

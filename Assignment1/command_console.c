@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#define TIMER 2
 void print_ui();
 
 int main(int argc, char *argv[])
@@ -15,34 +16,24 @@ int main(int argc, char *argv[])
 	int fd_comm_x;
 	int fd_comm_z;
 	int fd_comm;
-
 	// initialize the temporary file
 	char* f_comm_x = "/tmp/f_comm_x";
 	char* f_comm_z = "/tmp/f_comm_z";
 	char* f_comm = "/tmp/f_comm";
-
 	// get the PID of the command console and send it to the watchdog
- 	int pid_comm = getpid();
- 	printf("comm console says: my pid_comm is  %d\n\n\n", pid_comm);
+ 	int pid = getpid();
+  	printf("comm console says: my pid is  %d\n\n\n", pid);
  	fflush(stdout);
  	fd_comm = open(f_comm, O_WRONLY);
-    if (fd_comm < 0){
-        perror(f_comm);
-        return -1;
-    }
- 	write(fd_comm, &pid_comm, sizeof(pid_comm));
+ 	write(fd_comm, &pid, sizeof(pid));
 	close(fd_comm);
-
 	// get watchdog's PID for signal handling
 	int pidwd;
 	fd_comm = open(f_comm, O_RDONLY);
-    if (fd_comm < 0){
-        perror(f_comm);
-        return -1;
-    }
-	read(fd_comm, &pidwd, sizeof(pidwd)); // dobbiamo cambiare se non funziona 
-	close(fd_comm); // ( passo direttamente la variabile)
-	printf("WD pid_comm: %d", pidwd);
+	read(fd_comm, &pidwd, sizeof(pid));
+	close(fd_comm);
+	
+	printf("WD pid: %d", pidwd);
 	fflush(stdout);
 	
 	print_ui();
@@ -50,22 +41,17 @@ int main(int argc, char *argv[])
 	// infinte for loop 
 	for(;;)
 	{		
-        // send signal to watchdog
-		kill(pidwd, SIGUSR1);
-        char choice;
+		char choice;
 		// getting the command from the user
 		scanf(" %c", &choice);
-        // decide the behavior based on user's choice
+		// decide the behavior based on user's choice
+		kill(pidwd, SIGUSR1);
 		switch (choice)
 		{
 			case 'A':
 			case 'a':
 				choice = 'a';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
-                if (fd_comm_x < 0){
-                    perror(f_comm_x);
-                    return -1;
-                }   
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
 				break;
@@ -74,10 +60,6 @@ int main(int argc, char *argv[])
 			case 'd':
 				choice = 'd';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
-                if (fd_comm_x < 0){
-                    perror(f_comm_x);
-                    return -1;
-                }   
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
 				break;
@@ -86,10 +68,6 @@ int main(int argc, char *argv[])
 			case 'w':
 				choice = 'w';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
-                if (fd_comm_z < 0){
-                    perror(f_comm_z);
-                    return -1;
-                }   
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;	
@@ -98,10 +76,6 @@ int main(int argc, char *argv[])
 			case 's':
 				choice = 's';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
-                if (fd_comm_z < 0){
-                    perror(f_comm_z);
-                    return -1;
-                }   
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;			
@@ -110,10 +84,6 @@ int main(int argc, char *argv[])
 			case 'q':
 				choice = 'q';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
-                if (fd_comm_x < 0){
-                    perror(f_comm_x);
-                    return -1;
-                }   
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
 				break;
@@ -122,10 +92,6 @@ int main(int argc, char *argv[])
 			case 'z':
 				choice = 'z';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
-                if (fd_comm_z < 0){
-                    perror(f_comm_z);
-                    return -1;
-                }   
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;	
@@ -154,4 +120,6 @@ void print_ui()
 	printf("RESET and STOP are given in inspection console");
 	printf("\n\n");
 	fflush(stdout);
+
+	//sleep(TIMER);
 }
