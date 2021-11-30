@@ -12,8 +12,18 @@
 #define END 50
 #define STEP 0.001
 
+//initialize the temporary files
+char* f_motor_x = "/tmp/f_motor_x";
+char* f_comm_x = "/tmp/f_comm_x";
+char* f_motor_x_to_insp = "/tmp/f_motor_x_to_insp";
+// initialize file descriptor for pipe
+int fd_motor_x;	
+int fd_comm_x;
+int fd_motor_x_to_insp;
+
 double position_x = 0;
 char choice_x;
+char send[20];
 
 void sig_handler_reset(int signo)
 {
@@ -35,7 +45,9 @@ void sig_handler_reset(int signo)
 				position_x -= err;
 				printf("Resetting position: remaining %f m\n", position_x);
 				fflush(stdout);
-				sleep(0.5);
+				sprintf(send, "%f", position_x);
+				write(fd_motor_x, &send, sizeof(send));
+				sleep(1);
 			}
 			position_x = HOME;
 			printf("position = %f m\n", position_x);
@@ -57,14 +69,7 @@ void sig_handler_stop(int signo)
 
 int main()
 {
-	//initialize the temporary files
-	char* f_motor_x = "/tmp/f_motor_x";
-	char* f_comm_x = "/tmp/f_comm_x";
-	char* f_motor_x_to_insp = "/tmp/f_motor_x_to_insp";
-	// initialize file descriptor for pipe
-	int fd_motor_x;	
-	int fd_comm_x;
-	int fd_motor_x_to_insp;
+	
 			
 	// get the PID of the motor x and send it to the watchdog	
 	int pid = getpid();
@@ -74,10 +79,8 @@ int main()
  	write(fd_motor_x, &pid, sizeof(pid));
  	close(fd_motor_x);
 	//unlink(f_motor_x);
-	printf("jisdhfiuw");
-	fflush(stdout);
-
-	 //sending motor x pid to inspection console for signal handling
+	
+	//sending motor x pid to inspection console for signal handling
 
 	fd_motor_x_to_insp = open(f_motor_x_to_insp, O_WRONLY);
 	if (fd_motor_x_to_insp < 0) 
@@ -104,7 +107,7 @@ int main()
 	int retval, command;
 	fd_comm_x = open(f_comm_x, O_RDONLY);
 	fd_motor_x = open(f_motor_x, O_WRONLY);
-	char send[20];
+	
 	fd_set set;
 
 	for (;;)
@@ -178,6 +181,7 @@ int main()
 				break;			 
 		 	}
 		}
+		sleep(1);
 	}
 	
  	close(fd_motor_x);

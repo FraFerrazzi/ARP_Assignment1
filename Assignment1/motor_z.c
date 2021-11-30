@@ -12,8 +12,19 @@
 #define END 25
 #define STEP 0.001
 
+// initialize file descriptor for pipe
+int fd_motor_z;	
+int fd_comm_z;
+int fd_motor_z_to_insp;
+
+// initialize the temporary file
+char* f_motor_z = "/tmp/f_motor_z";
+char* f_comm_z = "/tmp/f_comm_z";
+char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
+
 double position_z = 0;
 char choice_z;
+char send[20];
 
 void sig_handler_reset(int signo)
 {
@@ -35,7 +46,9 @@ void sig_handler_reset(int signo)
 			 	position_z -= err;
 				printf("Resetting position: remaining %f m\n", position_z);
 				fflush(stdout);
-				sleep(0.5);
+				sprintf(send, "%f", position_z);
+				write(fd_motor_z, &send, sizeof(send));
+				sleep(1);
 			}
 		 	position_z = HOME;
 			printf("posiztion = %f m\n", position_z);
@@ -57,17 +70,6 @@ void sig_handler_stop(int signo)
 
 int main()
 {
-	// initialize file descriptor for pipe
-	int fd_motor_z;	
-	int fd_comm_z;
-	int fd_motor_z_to_insp;
-
-	// initialize the temporary file
-	char* f_motor_z = "/tmp/f_motor_z";
-	char* f_comm_z = "/tmp/f_comm_z";
-	char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
-
-
 	// get the PID of the motor z and send it to the watchdog
 	int pid = getpid();
  	printf("motor z says: my pid is  %d\n", pid);
@@ -76,9 +78,6 @@ int main()
  	write(fd_motor_z, &pid, sizeof(pid));
  	close(fd_motor_z);
 	//unlink(f_motor_z);
-	printf("jahbfowhniq");
-	fflush(stdout);
-
 
 	fd_motor_z_to_insp = open(f_motor_z_to_insp, O_WRONLY);
 	if (fd_motor_z_to_insp < 0) 
@@ -107,8 +106,7 @@ int main()
 	int retval, command;
 	fd_comm_z = open(f_comm_z, O_RDONLY);
 	fd_motor_z = open(f_motor_z, O_WRONLY);
-	char send[20];
-
+	
 	fd_set set;
 	struct timeval time;
 		
@@ -183,6 +181,7 @@ int main()
 				break;			 
 		 	}
 		}
+		sleep(1);
 	}
 	
  	close(fd_motor_z);

@@ -16,26 +16,28 @@ int main(int argc, char *argv[])
 	int fd_comm_x;
 	int fd_comm_z;
 	int fd_comm;
+	int fd_master;
 	// initialize the temporary file
 	char* f_comm_x = "/tmp/f_comm_x";
 	char* f_comm_z = "/tmp/f_comm_z";
 	char* f_comm = "/tmp/f_comm";
-	// get the PID of the command console and send it to the watchdog
- 	int pid = getpid();
-  	printf("comm console says: my pid is  %d\n\n\n", pid);
- 	fflush(stdout);
- 	fd_comm = open(f_comm, O_WRONLY);
- 	write(fd_comm, &pid, sizeof(pid));
-	close(fd_comm);
+	char* f_master = "/tmp/f_master";
+
 	// get watchdog's PID for signal handling
 	int pidwd;
 	fd_comm = open(f_comm, O_RDONLY);
-	read(fd_comm, &pidwd, sizeof(pid));
-	close(fd_comm);
-	
+	read(fd_comm, &pidwd, sizeof(pidwd));
+	close(fd_comm);	
 	printf("WD pid: %d", pidwd);
 	fflush(stdout);
-	
+	// get master's PID for signal handling
+	int pidMaster;
+	fd_master = open(f_master, O_RDONLY);
+	read(fd_master, &pidMaster, sizeof(pidMaster));
+	close(fd_master);
+	printf("Master PID: %d\n", pidMaster);
+	fflush(stdout);
+
 	print_ui();
 
 	// infinte for loop 
@@ -95,6 +97,11 @@ int main(int argc, char *argv[])
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;	
+
+			case 'K':
+			case 'k':
+				kill(pidMaster, SIGQUIT);
+				break;
 
 			default:
 				printf("It's not a valid input, retry");

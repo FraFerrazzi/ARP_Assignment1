@@ -24,13 +24,13 @@ int main(int argc, char * argv[])
 {
 	// initialize file descriptor for pipe
 	int fd_comm;	
-	int fd_insp;
+	//int fd_insp;
 	int fd_motor_x;	
 	int fd_motor_z;	
 
 	// initialize the temporary file
 	char* f_comm = "/tmp/f_comm";
-	char* f_insp = "/tmp/f_insp";
+	//char* f_insp = "/tmp/f_insp";
 	char* f_motor_x = "/tmp/f_motor_x"; 
 	char* f_motor_z = "/tmp/f_motor_z";
 
@@ -41,20 +41,20 @@ int main(int argc, char * argv[])
 
 	// importing command process PID and display it on watchdog konsole
 
-	int pidcomm;
+	/*int pidcomm;
   	fd_comm = open(f_comm, O_RDONLY);
  	read(fd_comm, &pidcomm, sizeof(pidcomm));
  	close(fd_comm);
 	printf("pid comm: %d\n", pidcomm);
- 	fflush(stdout);
+ 	fflush(stdout);*/
 	
  	// importing inspection process PID and display it on watchdog konsole
- 	int pidinsp;  	
+ 	/*int pidinsp;  	
  	fd_insp = open(f_insp, O_RDONLY);
  	read(fd_insp, &pidinsp,sizeof(pidinsp));
  	close(fd_insp);
  	printf("pid inspection: %d\n", pidinsp);
-	fflush(stdout);
+	fflush(stdout);*/
 	
 	// importing motor x pid and display it on watchdog konsole
 	//int pidmotorx; 	
@@ -64,7 +64,7 @@ int main(int argc, char * argv[])
  	close(fd_motor_x);
  	printf("pid motor x: %d\n", pidmotorx);
  	fflush(stdout);
-	 	
+
  	// importing motor z pid and display it on watchdog konsole
     int pidmotorz;
 	fd_motor_z = open(f_motor_z, O_RDONLY);
@@ -108,7 +108,7 @@ int main(int argc, char * argv[])
 				
 	}
 	unlink(f_comm);
-	unlink(f_insp);
+	//unlink(f_insp);
 	unlink(f_motor_x);
 	unlink(f_motor_z);
 	return 0;

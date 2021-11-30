@@ -7,40 +7,26 @@
 #include <sys/stat.h> 
 #include <sys/types.h> 
 
-#define PAUSE 0.6
+#define PAUSE 1
 
 int main()
 {
-	//initialize pid motor x and pid motor z
-	int pidmotorx, pidmotorz;
 	// initialize file descriptors for pipes
-	int fd_insp;	
+	//int fd_insp;	
 	int fd_motor_x;	
 	int fd_motor_z;
 	int fd_motor_x_to_insp;
 	int fd_motor_z_to_insp;
 
 	// initialize the temporary file
-	char* f_insp = "/tmp/f_insp";
+	//char* f_insp = "/tmp/f_insp";
 	char* f_motor_x = "/tmp/f_motor_x";
 	char* f_motor_z = "/tmp/f_motor_z";
 	char* f_motor_x_to_insp = "/tmp/f_motor_x_to_insp";
 	char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
-	
-	// get the PID of the inspection console and send it to the watchdog
-	int pid = getpid();
- 	printf("inspection console says: my pid is  %d\n", pid);
- 	fflush(stdout);	
- 	fd_insp = open(f_insp, O_WRONLY);
- 	write(fd_insp, &pid, sizeof(pid));
- 	close(fd_insp);
-	
-	fd_motor_x = open(f_motor_x, O_RDONLY);
-	fd_motor_z = open(f_motor_z, O_RDONLY);
-	float pos_x;
-	float pos_z;
 
 	// get motor x and motor z PIDS for signal handling
+	int pidmotorx;
 	fd_motor_x_to_insp = open(f_motor_x_to_insp, O_RDONLY);
 	if (fd_motor_x_to_insp < 0) {
         perror("fd_motor_x_to_insp");
@@ -50,7 +36,8 @@ int main()
  	close(fd_motor_x_to_insp);
  	printf("pid motor x: %d\n", pidmotorx);
  	fflush(stdout);
-
+	// get motor z PID
+	int pidmotorz;
 	fd_motor_z_to_insp = open(f_motor_z_to_insp, O_RDONLY);
 	if (fd_motor_z_to_insp < 0) {
         perror("fd_motor_z_to_insp");
@@ -60,7 +47,8 @@ int main()
  	close(fd_motor_z_to_insp);
  	printf("pid motor z: %d\n", pidmotorz);
  	fflush(stdout);
- 	
+	
+	printf("dofiwnpfmo");
 	//defining select function's variables
 	char comm_inspect;
 	int n;
@@ -98,6 +86,12 @@ int main()
 		}
 		//printf("command is %c\n", comm_inspect[0]);	
 
+		fd_motor_x = open(f_motor_x, O_RDONLY);
+		fd_motor_z = open(f_motor_z, O_RDONLY);
+		float pos_x;
+		float pos_z;
+
+
 		fd_set fds;
 		int maxfd;
 		int res;
@@ -115,7 +109,7 @@ int main()
 
 		select(maxfd+1, &fds, NULL, NULL, &time);
 
-		//system("clear");
+		system("clear");
 
 		if (FD_ISSET(fd_motor_x, &fds)) // read from motor x file descriptor
 		{
@@ -136,6 +130,6 @@ int main()
 	close(fd_motor_z);
 	unlink(f_motor_x);
 	unlink(f_motor_z);
-	unlink(f_insp);
+	//unlink(f_insp);
 	return 0;
 }
