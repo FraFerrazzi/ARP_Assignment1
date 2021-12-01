@@ -9,8 +9,9 @@
 #include <stdbool.h>
 
 #define HOME 0
-#define END 25
-#define STEP 0.001
+#define END 20
+#define STEP 0.01
+#define PAUSE 10000
 
 // initialize file descriptor for pipe
 int fd_motor_z;	
@@ -30,33 +31,39 @@ void sig_handler_reset(int signo)
 {
 	if (signo == SIGINT)
 	{
-	 	position_z = position_z;
-		printf("!!!!RESET SIGNAL!!!!");
-		if  (position_z == HOME)
+	 	printf("!!!!RESET SIGNAL!!!!");
+		while(position_z >= HOME || signo == SIGTERM)
 		{
-			printf("already at home: posiztion = %f\n", position_z);
+			position_z = position_z-STEP;
+			float err= (((float)rand()/(float)RAND_MAX)*0.005)-0.0025;
+			position_z -= err;
+			printf("Resetting position: remaining %f m\n", position_z);
 			fflush(stdout);
+			sprintf(send, "%f", position_z);
+			write(fd_motor_z, &send, sizeof(send));
+			usleep(PAUSE);
+		}
+		if (position_z <= HOME)
+		{
+			position_z = HOME;
+			printf("position = %f m\n", position_z);
+			fflush(stdout);
+			sprintf(send, "%f", position_z);
+			write(fd_motor_z, &send, sizeof(send));
+			usleep(PAUSE);
 		}
 		else
 		{
-			while (position_z >= HOME)
-			{
-			 	position_z = position_z - STEP;
-				float err = (((float)rand()/(float)RAND_MAX)*0.0005)-0.00025;
-			 	position_z -= err;
-				printf("Resetting position: remaining %f m\n", position_z);
-				fflush(stdout);
-				sprintf(send, "%f", position_z);
-				write(fd_motor_z, &send, sizeof(send));
-				sleep(1);
-			}
-		 	position_z = HOME;
-			printf("posiztion = %f m\n", position_z);
+			position_z = position_z;
+			printf("position = %f m\n", position_z);
 			fflush(stdout);
-			choice_z = 'z';
+			sprintf(send, "%f", position_z);
+			write(fd_motor_z, &send, sizeof(send));
+			usleep(PAUSE);
 		}
-	}	
-}
+		choice_z = 'q';
+	}
+}	
 
 void sig_handler_stop(int signo)
 {
@@ -70,15 +77,29 @@ void sig_handler_stop(int signo)
 
 int main()
 {
+	// Open a file pointer named "logfileMotorZ.txt" for writing (w+)
+	FILE *fp;
+    fp = fopen("./logfile/logfileMotorZ.txt", "w");
+	if(fp == NULL)
+   	{
+    	printf("Error opening the logfileMaster!");   
+    	exit(1);             
+   	}
+
 	// get the PID of the motor z and send it to the watchdog
 	int pid = getpid();
  	printf("motor z says: my pid is  %d\n", pid);
  	fflush(stdout);
 	fd_motor_z = open(f_motor_z, O_WRONLY);
+	if (fd_motor_z < 0) 
+	{
+        perror("f_motor_z");
+        return -1;
+    }
  	write(fd_motor_z, &pid, sizeof(pid));
  	close(fd_motor_z);
-	//unlink(f_motor_z);
-
+	
+	// sending motor z PID to inspection console for signal handling
 	fd_motor_z_to_insp = open(f_motor_z_to_insp, O_WRONLY);
 	if (fd_motor_z_to_insp < 0) 
 	{
@@ -105,7 +126,17 @@ int main()
 
 	int retval, command;
 	fd_comm_z = open(f_comm_z, O_RDONLY);
+	if (fd_comm_z < 0) 
+	{
+        perror("f_comm_z");
+        return -1;
+    }
 	fd_motor_z = open(f_motor_z, O_WRONLY);
+	if (fd_motor_z < 0) 
+	{
+        perror("f_motor_z");
+        return -1;
+    }
 	
 	fd_set set;
 	struct timeval time;
@@ -140,7 +171,7 @@ int main()
 				}
 				else{
 				 	position_z = position_z - STEP;
-					float err = (((float)rand()/(float)RAND_MAX)*0.0005)-0.00025;
+					float err = (((float)rand()/(float)RAND_MAX)*0.005)-0.0025;
 				 	position_z -= err;
 					printf("the position is %f m\n", position_z);
 					fflush(stdout);
@@ -159,7 +190,7 @@ int main()
 				}
 				else{	
 				 	position_z = position_z + STEP;
-					float err = (((float)rand()/(float)RAND_MAX)*0.0005)-0.00025;
+					float err = (((float)rand()/(float)RAND_MAX)*0.005)-0.0025;
 				 	position_z -= err;
 					printf("the position is %f m\n", position_z);
 					fflush(stdout);
@@ -181,7 +212,7 @@ int main()
 				break;			 
 		 	}
 		}
-		sleep(1);
+		usleep(PAUSE);
 	}
 	
  	close(fd_motor_z);

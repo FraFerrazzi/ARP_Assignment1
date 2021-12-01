@@ -7,16 +7,29 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define TIMER 2
 void print_ui();
 
 int main(int argc, char *argv[])
 {
+	// Open a file pointer named "logfileCommandCons.txt" for writing (w+)
+	FILE *fp; 
+	fp = fopen("./logfile/logfileCommandCons.txt", "w");
+	if(fp == NULL)
+   	{
+    	printf("Error opening the logfileMaster!");   
+    	exit(1);             
+   	}
+	// printing in the log file that command console is forked by master
+	fprintf(fp, "COMMAND CONSOLE IS FORKED BY MASTER\n\n");
+	fflush(fp);
+
+	
 	// initialize file descriptors for pipes
 	int fd_comm_x;
 	int fd_comm_z;
 	int fd_comm;
 	int fd_master;
+
 	// initialize the temporary file
 	char* f_comm_x = "/tmp/f_comm_x";
 	char* f_comm_z = "/tmp/f_comm_z";
@@ -26,19 +39,42 @@ int main(int argc, char *argv[])
 	// get watchdog's PID for signal handling
 	int pidwd;
 	fd_comm = open(f_comm, O_RDONLY);
+	if (fd_comm < 0) {
+		fprintf(fp, "Error opening command pipe");
+		fflush(fp);
+        perror("fd_comm");
+        return -1;
+    }
 	read(fd_comm, &pidwd, sizeof(pidwd));
 	close(fd_comm);	
 	printf("WD pid: %d", pidwd);
 	fflush(stdout);
+
 	// get master's PID for signal handling
 	int pidMaster;
 	fd_master = open(f_master, O_RDONLY);
+	if (fd_master < 0) {
+		fprintf(fp, "Error opening master pipe");
+		fflush(fp);
+        perror("fd_master");
+        return -1;
+    }
 	read(fd_master, &pidMaster, sizeof(pidMaster));
 	close(fd_master);
 	printf("Master PID: %d\n", pidMaster);
 	fflush(stdout);
+	// printing in the log file that all pipes used by command console are open
+	fprintf(fp, "All pipes used by Command Console are correctly open\n");
+	fflush(fp);
+	
 
+	// calling the function that prints the inputs that the user can use on the command console
+	// these commands are used in order to control the behavior of the hoist
 	print_ui();
+	// printing in the log file that print_ui() function is called
+	fprintf(fp, "print_ui() function has been called... User interface was printed on the shell\n\n");
+	fflush(fp);
+	
 
 	// infinte for loop 
 	for(;;)
@@ -46,64 +82,96 @@ int main(int argc, char *argv[])
 		char choice;
 		// getting the command from the user
 		scanf(" %c", &choice);
-		// decide the behavior based on user's choice
+		// printing in the log file the command that was chosen by the user
+		fprintf(fp, "Command that was chosen by the user: %c\n", choice);
+		fflush(fp);
+		// every time there is a standard input, a signal is sent to watchdog
+		// this is used in order to reset the counter that resets all processes
 		kill(pidwd, SIGUSR1);
+		// decide the behavior based on user's choice
 		switch (choice)
 		{
-			case 'A':
+			case 'A': // user types a||A, hoist moves right
 			case 'a':
 				choice = 'a';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
+				if (fd_comm_x < 0) {
+        			perror("fd_comm_x");
+        			return -1;
+    			}
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
+
 				break;
 
-			case 'D':
+			case 'D': // user types d||D, hoist moves left
 			case 'd':
 				choice = 'd';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
+				if (fd_comm_x < 0) {
+        			perror("fd_comm_x");
+        			return -1;
+    			}
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
 				break;
 
-			case 'W':
+			case 'W': // user types w||W, hoist moves up
 			case 'w':
 				choice = 'w';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
+				if (fd_comm_z < 0) {
+        			perror("fd_comm_z");
+        			return -1;
+    			}
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;	
 
-			case 'S':
+			case 'S': // user types s||S, hoist moves down
 			case 's':
 				choice = 's';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
+				if (fd_comm_z < 0) {
+        			perror("fd_comm_z");
+        			return -1;
+    			}
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;			
 
-			case 'Q':
+			case 'Q': // user types q||Q, hoist stops motor x
 			case 'q':
 				choice = 'q';
 				fd_comm_x = open(f_comm_x, O_WRONLY);
+				if (fd_comm_x < 0) {
+        			perror("fd_comm_x");
+        			return -1;
+    			}
 				write(fd_comm_x, &choice, sizeof(choice));
 				close(fd_comm_x);
 				break;
 
-			case 'Z':
+			case 'Z': // user types z||Z, hoist stops motor z
 			case 'z':
 				choice = 'z';
 				fd_comm_z = open(f_comm_z, O_WRONLY);
+				if (fd_comm_z < 0) {
+        			perror("fd_comm_z");
+        			return -1;
+    			}
 				write(fd_comm_z, &choice, sizeof(choice));
 				close(fd_comm_z);
 				break;	
 
-			case 'K':
+			case 'K': // user types k||K, closes all programs
 			case 'k':
 				kill(pidMaster, SIGQUIT);
+				fprintf(fp, "Signal in order to kill the processes has been sent to the master");
+				fflush(fp);
 				break;
 
-			default:
+			default: // user types everything else, hoist does nothing
 				printf("It's not a valid input, retry");
 				break;
 		}	
@@ -115,6 +183,7 @@ int main(int argc, char *argv[])
 }
 
 // function that displays the possible commands that user can use
+// if user decides to use anything else, the switcher will handle the exception
 void print_ui()
 {
 	printf("Enter a choice to move the structure: of the HOIST\n\n");
@@ -124,9 +193,10 @@ void print_ui()
 	printf("        S = down\n");
 	printf("Q = stop x-axis");
 	printf("        Z = stop z-axis\n\n");
-	printf("RESET and STOP are given in inspection console");
+	printf("K = exit the program\n\n");
+	printf("RESET and STOP has to be given from the inspection console\n");
+	printf("R = reset motors");
+	printf("        E = emergency stop\n\n");
 	printf("\n\n");
 	fflush(stdout);
-
-	//sleep(TIMER);
 }

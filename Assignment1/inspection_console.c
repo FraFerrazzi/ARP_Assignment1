@@ -7,25 +7,38 @@
 #include <sys/stat.h> 
 #include <sys/types.h> 
 
-#define PAUSE 1
+#define PAUSE 10000
 
 int main()
 {
+	// Open a file pointer named "logfileInspectionCons.txt" for writing (w+)
+	FILE *fp; 
+	fp = fopen("./logfile/logfileInspectionCons.txt", "w");
+	if(fp == NULL)
+   	{
+    	printf("Error opening the logfileMaster!");   
+    	exit(1);             
+   	}
+
+	char* data = "The data to be logged...";
+	fputs(data, fp);
+
+	fclose(fp);
 	// initialize file descriptors for pipes
-	//int fd_insp;	
 	int fd_motor_x;	
 	int fd_motor_z;
 	int fd_motor_x_to_insp;
 	int fd_motor_z_to_insp;
+	int fd_insp;
 
 	// initialize the temporary file
-	//char* f_insp = "/tmp/f_insp";
 	char* f_motor_x = "/tmp/f_motor_x";
 	char* f_motor_z = "/tmp/f_motor_z";
 	char* f_motor_x_to_insp = "/tmp/f_motor_x_to_insp";
 	char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
+	char* f_insp = "/tmp/f_insp"; 
 
-	// get motor x and motor z PIDS for signal handling
+	// get motor x PID for signal handling
 	int pidmotorx;
 	fd_motor_x_to_insp = open(f_motor_x_to_insp, O_RDONLY);
 	if (fd_motor_x_to_insp < 0) {
@@ -36,7 +49,8 @@ int main()
  	close(fd_motor_x_to_insp);
  	printf("pid motor x: %d\n", pidmotorx);
  	fflush(stdout);
-	// get motor z PID
+
+	// get motor z PID for signal handling
 	int pidmotorz;
 	fd_motor_z_to_insp = open(f_motor_z_to_insp, O_RDONLY);
 	if (fd_motor_z_to_insp < 0) {
@@ -47,16 +61,39 @@ int main()
  	close(fd_motor_z_to_insp);
  	printf("pid motor z: %d\n", pidmotorz);
  	fflush(stdout);
+
+	// recieve watchdog's PID for signal handling
+	int pidwatchdog;
+	fd_insp = open(f_insp, O_RDONLY);
+	if (fd_insp < 0) {
+        perror("fd_insp");
+        return -1;
+    }
+ 	read(fd_insp, &pidwatchdog, sizeof(pidwatchdog));
+ 	close(fd_insp);
+ 	printf("pid watchdog: %d\n", pidwatchdog);
+ 	fflush(stdout);
 	
-	printf("dofiwnpfmo");
 	//defining select function's variables
 	char comm_inspect;
 	int n;
 	fd_set fd_in;
 
+	fd_motor_x = open(f_motor_x, O_RDONLY);
+	if (fd_motor_x < 0) {
+        perror("fd_motor_x");
+        return -1;
+    }
+	fd_motor_z = open(f_motor_z, O_RDONLY);
+	if (fd_motor_z < 0) {
+        perror("fd_motor_z");
+        return -1;
+    }
+	float pos_x;
+	float pos_z;
+
 	for(;;)
 	{
-
 		FD_ZERO(&fd_in);
 		FD_SET(STDIN_FILENO, &fd_in);
 		struct timeval timeout;
@@ -66,6 +103,7 @@ int main()
 
 		if (FD_ISSET(STDIN_FILENO, &fd_in))
 		{
+			kill(pidwatchdog, SIGUSR1);
 			n = read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
 			switch(comm_inspect)
 			{
@@ -84,13 +122,6 @@ int main()
 			}
 				
 		}
-		//printf("command is %c\n", comm_inspect[0]);	
-
-		fd_motor_x = open(f_motor_x, O_RDONLY);
-		fd_motor_z = open(f_motor_z, O_RDONLY);
-		float pos_x;
-		float pos_z;
-
 
 		fd_set fds;
 		int maxfd;
@@ -109,8 +140,6 @@ int main()
 
 		select(maxfd+1, &fds, NULL, NULL, &time);
 
-		system("clear");
-
 		if (FD_ISSET(fd_motor_x, &fds)) // read from motor x file descriptor
 		{
 			res = read(fd_motor_x, bufdispx, sizeof(bufdispx));
@@ -123,13 +152,13 @@ int main()
 			pos_z = atof(bufdispz);
 		}
 		printf("Motor X position: %f;        Motor Z position: %f;\n", pos_x, pos_z);
-		sleep(PAUSE);
+		usleep(PAUSE);
+		//system("clear");
 	}
 	
 	close(fd_motor_x);
 	close(fd_motor_z);
 	unlink(f_motor_x);
 	unlink(f_motor_z);
-	//unlink(f_insp);
 	return 0;
 }
