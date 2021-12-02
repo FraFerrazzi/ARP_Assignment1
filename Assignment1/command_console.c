@@ -39,7 +39,8 @@ int main(int argc, char *argv[])
 	// get watchdog's PID for signal handling
 	int pidwd;
 	fd_comm = open(f_comm, O_RDONLY);
-	if (fd_comm < 0) {
+	if (fd_comm < 0) 
+	{
 		fprintf(fp, "Error opening command pipe");
 		fflush(fp);
         perror("fd_comm");
@@ -47,13 +48,15 @@ int main(int argc, char *argv[])
     }
 	read(fd_comm, &pidwd, sizeof(pidwd));
 	close(fd_comm);	
-	printf("WD pid: %d", pidwd);
+	fprintf(fp, "Watchdog PID: %d\n", pidwd);
+	printf("WD pid: %d\n", pidwd);
 	fflush(stdout);
 
 	// get master's PID for signal handling
 	int pidMaster;
 	fd_master = open(f_master, O_RDONLY);
-	if (fd_master < 0) {
+	if (fd_master < 0) 
+	{
 		fprintf(fp, "Error opening master pipe");
 		fflush(fp);
         perror("fd_master");
@@ -63,6 +66,7 @@ int main(int argc, char *argv[])
 	close(fd_master);
 	printf("Master PID: %d\n", pidMaster);
 	fflush(stdout);
+	fprintf(fp, "Master PID: %d\n", pidMaster);
 	// printing in the log file that all pipes used by command console are open
 	fprintf(fp, "All pipes used by Command Console are correctly open\n");
 	fflush(fp);
@@ -74,7 +78,29 @@ int main(int argc, char *argv[])
 	// printing in the log file that print_ui() function is called
 	fprintf(fp, "print_ui() function has been called... User interface was printed on the shell\n\n");
 	fflush(fp);
-	
+
+	// open pipes to send commands to motors
+	fd_comm_x = open(f_comm_x, O_WRONLY);
+	if (fd_comm_x < 0) 
+	{
+		fprintf(fp, "Error opening command x pipe");
+		fflush(fp);
+        perror("fd_comm_x");
+        return -1;
+    }
+
+	fd_comm_z = open(f_comm_z, O_WRONLY);
+	if (fd_comm_z < 0) 
+	{
+		fprintf(fp, "Error opening command z pipe");
+		fflush(fp);
+        perror("fd_comm_z");
+        return -1;
+    }
+
+	// printing in the log file that pipes used by command console for sending commands to motors are open
+	fprintf(fp, "All pipes used by Command Console for sending instructions to motors are correctly open\n\n");
+	fflush(fp);
 
 	// infinte for loop 
 	for(;;)
@@ -94,74 +120,37 @@ int main(int argc, char *argv[])
 			case 'A': // user types a||A, hoist moves right
 			case 'a':
 				choice = 'a';
-				fd_comm_x = open(f_comm_x, O_WRONLY);
-				if (fd_comm_x < 0) {
-        			perror("fd_comm_x");
-        			return -1;
-    			}
 				write(fd_comm_x, &choice, sizeof(choice));
-				close(fd_comm_x);
-
 				break;
 
 			case 'D': // user types d||D, hoist moves left
 			case 'd':
 				choice = 'd';
-				fd_comm_x = open(f_comm_x, O_WRONLY);
-				if (fd_comm_x < 0) {
-        			perror("fd_comm_x");
-        			return -1;
-    			}
 				write(fd_comm_x, &choice, sizeof(choice));
-				close(fd_comm_x);
 				break;
 
 			case 'W': // user types w||W, hoist moves up
 			case 'w':
 				choice = 'w';
-				fd_comm_z = open(f_comm_z, O_WRONLY);
-				if (fd_comm_z < 0) {
-        			perror("fd_comm_z");
-        			return -1;
-    			}
 				write(fd_comm_z, &choice, sizeof(choice));
-				close(fd_comm_z);
 				break;	
 
 			case 'S': // user types s||S, hoist moves down
 			case 's':
 				choice = 's';
-				fd_comm_z = open(f_comm_z, O_WRONLY);
-				if (fd_comm_z < 0) {
-        			perror("fd_comm_z");
-        			return -1;
-    			}
 				write(fd_comm_z, &choice, sizeof(choice));
-				close(fd_comm_z);
 				break;			
 
 			case 'Q': // user types q||Q, hoist stops motor x
 			case 'q':
 				choice = 'q';
-				fd_comm_x = open(f_comm_x, O_WRONLY);
-				if (fd_comm_x < 0) {
-        			perror("fd_comm_x");
-        			return -1;
-    			}
 				write(fd_comm_x, &choice, sizeof(choice));
-				close(fd_comm_x);
 				break;
 
 			case 'Z': // user types z||Z, hoist stops motor z
 			case 'z':
 				choice = 'z';
-				fd_comm_z = open(f_comm_z, O_WRONLY);
-				if (fd_comm_z < 0) {
-        			perror("fd_comm_z");
-        			return -1;
-    			}
 				write(fd_comm_z, &choice, sizeof(choice));
-				close(fd_comm_z);
 				break;	
 
 			case 'K': // user types k||K, closes all programs
@@ -175,8 +164,11 @@ int main(int argc, char *argv[])
 				printf("It's not a valid input, retry");
 				break;
 		}	
+		system("clear");
+		print_ui();
 	}
-	
+	close(fd_comm_x);
+	close(fd_comm_z);
 	unlink(f_comm);
 	unlink(f_comm_x);	
 	unlink(f_comm_z);
@@ -196,7 +188,6 @@ void print_ui()
 	printf("K = exit the program\n\n");
 	printf("RESET and STOP has to be given from the inspection console\n");
 	printf("R = reset motors");
-	printf("        E = emergency stop\n\n");
-	printf("\n\n");
+	printf("        E = emergency stop\n\n\n");
 	fflush(stdout);
 }

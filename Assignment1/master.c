@@ -7,6 +7,7 @@
 #include <sys/stat.h> 
 #include <sys/types.h> 
 
+
 // initialize PID of processes
 int pidComm;
 int pidX;
@@ -191,22 +192,23 @@ int main()
 	// handler for command console signal
 	signal(SIGQUIT, sig_handler);
 
+	// defining the arg list needed for watchdog
+	// calling the spawn function for watchdog
+	char * arg_list_wd [] = { "./watchdog", (char*)NULL };
+	pidWd = spawn("./watchdog", arg_list_wd); 
+
  	// defining the arg list needed for each program
  	char * arg_list_comm [] = { "/usr/bin/konsole",  "-e", "./command_console", "", (char*)NULL };
- 	char * arg_list_motorX [] = { "/usr/bin/konsole",  "-e", "./motor_x", " ", (char*)NULL };
- 	char * arg_list_motorZ [] = { "/usr/bin/konsole",  "-e", "./motor_z", " ", (char*)NULL };
+ 	char * arg_list_motorX [] = { "./motor_x", " ", (char*)NULL };
+ 	char * arg_list_motorZ [] = { "./motor_z", " ", (char*)NULL };
  	char * arg_list_inspect [] = { "/usr/bin/konsole",  "-e", "./inspection_console", " ", (char*)NULL };
- 	char * arg_list_wd [] = { "/usr/bin/konsole",  "-e", "./watchdog", (char*)NULL };
-	
+ 	
 	// calling the spawn function for each program needed
  	pidComm = spawn("/usr/bin/konsole", arg_list_comm); 	
- 	pidX = spawn("/usr/bin/konsole", arg_list_motorX); 	
- 	pidZ = spawn("/usr/bin/konsole", arg_list_motorZ); 	
- 	pidInspect = spawn("/usr/bin/konsole", arg_list_inspect); 		
- 	pidWd = spawn("/usr/bin/konsole", arg_list_wd); 	
- 	printf("Main program exiting...\n");
- 	fflush(stdout);
-
+ 	pidX = spawn("./motor_x", arg_list_motorX); 	
+ 	pidZ = spawn("./motor_z", arg_list_motorZ); 		
+	pidInspect = spawn("/usr/bin/konsole", arg_list_inspect); 		
+ 	
 	// printing in the log file that all processes are correctly created
 	fprintf(fp, "ALL PROCESSES ARE CORRECTLY CREATED\n");
 	// printing in the log file that all consoles are correctly opene
@@ -221,7 +223,10 @@ int main()
 	printf("Master says: my pid is %d\n", pidMaster);
 	fflush(stdout);
 	fd_master = open(f_master, O_WRONLY);
-	if (fd_master < 0) {
+	if (fd_master < 0) 
+	{
+		fprintf(fp, "Error opening master pipe");
+		fflush(fp);
         perror("fd_master");
         return -1;
     }
@@ -235,6 +240,8 @@ int main()
 	fprintf(fp, "Master waits for something to happen...\n");
 	fflush(fp);
 	sleep(3600);
- 	return 0; 
-			
+
+	printf("Main program exiting...\n");
+ 	fflush(stdout);
+ 	return 0; 			
 }

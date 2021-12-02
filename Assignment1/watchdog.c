@@ -68,8 +68,6 @@ int main(int argc, char * argv[])
     }
  	read(fd_motor_x, &pidmotorx, sizeof(pidmotorx));
  	close(fd_motor_x);
- 	printf("pid motor x: %d\n", pidmotorx);
- 	fflush(stdout);
 
  	// importing motor z pid and display it on watchdog konsole
     int pidmotorz;
@@ -83,8 +81,6 @@ int main(int argc, char * argv[])
     }
  	read(fd_motor_z, &pidmotorz, sizeof(pidmotorz));
  	close(fd_motor_z);
- 	printf("pid motor z: %d\n", pidmotorz);
- 	fflush(stdout);
 
 	// sending watchdog PID to command process for signal handling
 	fd_comm = open(f_comm, O_WRONLY);
@@ -110,6 +106,10 @@ int main(int argc, char * argv[])
 	write(fd_insp, &wd_pid, sizeof(wd_pid));
 	close(fd_insp);
 
+	// printing all PIDS in log file
+	fprintf(fp, "PID Motor X: %d\n", pidmotorx);
+	fprintf(fp, "PID Motor Z: %d\n", pidmotorz);
+ 	fflush(fp);
 	// printing in the log file all pipes used by watchdog are open
 	fprintf(fp, "All pipes used by Watchdog are correctly open\n");
 	fflush(fp);
@@ -138,8 +138,6 @@ int main(int argc, char * argv[])
 			// printing in the log file that nothing has happend for N seconds and send signals to motors
 			fprintf(fp, "\nNothing has happened for %d seconds, Watchdog resets all the processes!\n", N);
 			fflush(fp);
-			printf("nothing has happened...\n");
-			printf("RESET THE PROCESSES\n");
 
 			kill(pidmotorx, SIGINT);
 			fprintf(fp, "Send the RESET signal to motor x\n");
@@ -150,7 +148,6 @@ int main(int argc, char * argv[])
 		} 
 		else if ( difftime(time(NULL),last_sig) == 0)
 		{
-			printf("\nUser gave a command, reset the counter\n");
 			counter = 0;
 			// printing in log file that user gave a command
 			fprintf(fp, "\nUser gave a command, counter is setted to %d\n", counter);
@@ -158,7 +155,6 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			printf("[%d]  ", counter);
 			// printing in log file that counter has been increased
 			fprintf(fp, "[%d] ", counter);
 			fflush(fp);
