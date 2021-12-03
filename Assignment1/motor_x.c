@@ -7,6 +7,7 @@
 #include <sys/stat.h> 
 #include <sys/types.h> 
 #include <stdbool.h>
+#include <time.h>
 
 // mesures in meters
 #define HOME 0

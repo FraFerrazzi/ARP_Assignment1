@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <sys/stat.h> 
 #include <sys/types.h> 
+#include <time.h>
 
 
 // initialize PID of processes
@@ -28,6 +29,10 @@ char* f_motor_z_to_insp = "/tmp/f_motor_z_to_insp";
 char* f_insp = "/tmp/f_insp";
 
 FILE *fp;
+// initialize variables for time informations for log file
+time_t rawtime;
+struct tm * timeinfo;
+	
 
 // signal handling from command console
 // if user presses 'k' then it sends a signal to the master which unlink
@@ -36,8 +41,10 @@ void sig_handler(int signo)
 {
 	if(signo == SIGQUIT)
 	{
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		// printing in the log file that processes are going to be killed
-		fprintf(fp, "\nUser gave the QUIT Command\n");
+		fprintf(fp, "\n\n%sUser gave the QUIT Command\n\n", asctime (timeinfo));
 		fflush(fp);
 
 		unlink(f_comm_x);
@@ -56,8 +63,11 @@ void sig_handler(int signo)
 		kill(pidInspect, SIGQUIT);
 		kill(pidMaster, SIGQUIT);
 		kill(pidWd, SIGQUIT);
+
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		// printing in the log file that processes were correctly killed
-		fprintf(fp, "All processes were correctly killed and all pipes were unlinked!\n");
+		fprintf(fp, "%sAll processes were correctly killed and all pipes were unlinked!\n\n", asctime (timeinfo));
 		fflush(fp);
 		exit(0);
 	}
@@ -76,7 +86,7 @@ int spawn(const char * program, char ** arg_list)
 	else 
 	{
     	execvp (program, arg_list);
-    	perror("exec failed");
+    	perror("execvp failed");
     	return 1;
     }
 }
@@ -85,8 +95,11 @@ int main()
 {
 	// Open a file pointer named "logfileMaster.txt" for writing (w+)
     fp = fopen("./logfile/logfileMaster.txt", "w");
+	// get time of the day
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that master has been launched
-	fprintf(fp, "MASTER PROGRAM IS LAUNCHED!!\n\n");
+	fprintf(fp, "%sMASTER PROGRAM IS LAUNCHED!!\n\n\n", asctime (timeinfo));
 	fflush(fp);
 
 	if(fp == NULL)
@@ -99,7 +112,9 @@ int main()
 	int ret_master = mkfifo(f_master, 0666);
 	if(ret_master < 0)
 	{
-		fprintf(fp, "Error creating master pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating master pipe", asctime (timeinfo));
 		fflush(fp);
 		perror("f_master");
 		return -1;
@@ -108,7 +123,9 @@ int main()
 	int ret_mk_comm_x = mkfifo(f_comm_x, 0666);
     if (ret_mk_comm_x < 0)
     {
-		fprintf(fp, "Error creating command x pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating command x pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_comm_x");
         unlink(f_comm_x);
@@ -118,7 +135,9 @@ int main()
 	int ret_mk_comm_z = mkfifo(f_comm_z, 0666);
     if (ret_mk_comm_z < 0)
     {
-		fprintf(fp, "Error creating command z pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating command z pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_comm_z");
         unlink(f_comm_z);
@@ -128,7 +147,9 @@ int main()
 	int ret_mk_comm = mkfifo(f_comm, 0666);
    if (ret_mk_comm < 0)
     {
-		fprintf(fp, "Error creating command pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating command pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_comm_x");
         unlink(f_comm_x);
@@ -138,7 +159,9 @@ int main()
 	int ret_mk_motor_x = mkfifo(f_motor_x, 0666);
 	if (ret_mk_motor_x< 0)
     {
-		fprintf(fp, "Error creating motor x pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating motor x pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_motor_x");
         unlink(f_motor_x);
@@ -148,7 +171,9 @@ int main()
 	int ret_mk_motor_z = mkfifo(f_motor_z, 0666);
 	if (ret_mk_motor_z< 0)
     {
-		fprintf(fp, "Error creating motor z pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating motor z pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_motor_z");
         unlink(f_motor_z);
@@ -158,7 +183,9 @@ int main()
 	int ret_mk_mot_x_to_insp = mkfifo(f_motor_x_to_insp, 0666);
 	if (ret_mk_mot_x_to_insp < 0)
     {
-		fprintf(fp, "Error creating motor x to inspection pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating motor x to inspection pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_motor_x_to_insp");
         unlink(f_motor_x_to_insp);
@@ -168,7 +195,9 @@ int main()
 	int ret_mk_mot_z_to_insp = mkfifo(f_motor_z_to_insp, 0666);
 	if (ret_mk_mot_z_to_insp < 0)
     {
-		fprintf(fp, "Error creating motor z to inspection pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating motor z to inspection pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_motor_z_to_insp");
         unlink(f_motor_z_to_insp);
@@ -178,15 +207,19 @@ int main()
 	int ret_mk_insp = mkfifo(f_insp, 0666);
 	if (ret_mk_insp< 0)
     {
-		fprintf(fp, "Error creating inspection pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError creating inspection pipe", asctime (timeinfo));
 		fflush(fp);
         perror("f_insp");
         unlink(f_insp);
         return -1;
     }
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that all pipes needed were correctly created
-	fprintf(fp, "ALL PIPES ARE CORRECTLY CREATED\n");
+	fprintf(fp, "%sALL PIPES ARE CORRECTLY CREATED\n\n", asctime (timeinfo));
 	fflush(fp);
 
 	// handler for command console signal
@@ -209,39 +242,51 @@ int main()
  	pidZ = spawn("./motor_z", arg_list_motorZ); 		
 	pidInspect = spawn("/usr/bin/konsole", arg_list_inspect); 		
  	
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that all processes are correctly created
-	fprintf(fp, "ALL PROCESSES ARE CORRECTLY CREATED\n");
+	fprintf(fp, "%sALL PROCESSES ARE CORRECTLY CREATED\n\n", asctime (timeinfo));
 	// printing in the log file that all consoles are correctly opene
-	fprintf(fp, "ALL CONSOLES ARE CORRECTLY OPEN\n");
+	fprintf(fp, "%sALL CONSOLES ARE CORRECTLY OPEN\n\n", asctime (timeinfo));
 	fflush(fp);
 	
 
-
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	//get the pid and send it to the command console for signal handling
 	int fd_master;
 	pidMaster = getpid();
-	printf("Master says: my pid is %d\n", pidMaster);
-	fflush(stdout);
+	fprintf(fp, "%sMaster says: my pid is %d\n\n", asctime (timeinfo), pidMaster);
+	fflush(fp);
 	fd_master = open(f_master, O_WRONLY);
 	if (fd_master < 0) 
 	{
-		fprintf(fp, "Error opening master pipe");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sError opening master pipe", asctime (timeinfo));
 		fflush(fp);
         perror("fd_master");
         return -1;
     }
 	write(fd_master, &pidMaster, sizeof(pidMaster));
 	close(fd_master);
+
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that master pid was sent to command console
-	fprintf(fp, "Master PID is sent to Command Console\n");
+	fprintf(fp, "%sMaster PID is sent to Command Console\n\n", asctime (timeinfo));
 	fflush(fp);
 	
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// master keeps running for an hour if nothing kills it
-	fprintf(fp, "Master waits for something to happen...\n");
+	fprintf(fp, "%sMaster waits for something to happen...\n\n", asctime (timeinfo));
 	fflush(fp);
-	sleep(3600);
+	sleep(3600); 
 
-	printf("Main program exiting...\n");
- 	fflush(stdout);
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
+	fprintf(fp, "%sTIMER ENDED: Main program exiting...\n\n", asctime (timeinfo));
+ 	fflush(fp);
  	return 0; 			
 }

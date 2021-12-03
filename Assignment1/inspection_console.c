@@ -90,6 +90,7 @@ int main()
 	fprintf(fp, "All pipes used by Inspection Console for sending and receiving PIDS are correctly open\n");
 	fflush(fp);
 
+	// open pipes to communicate with motors
 	fd_motor_x = open(f_motor_x, O_RDONLY);
 	if (fd_motor_x < 0) 
 	{
@@ -111,7 +112,7 @@ int main()
 	fprintf(fp, "All pipes used by inspection console for receiving positions are correctly open\n\n");
 	fflush(fp);
 
-	//defining select function's variables
+	// defining select function variables
 	char comm_inspect;
 	int n;
 	fd_set fd_in;
@@ -150,18 +151,18 @@ int main()
 			n = read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
 			switch(comm_inspect)
 			{
-				case 'r':
+				case 'r': // Reset case
 				fprintf(fp, "\nRESET SIGNAL IS SENT TO MOTORS\n\n");
 				fflush(fp);
-				kill(pidmotorx, SIGINT);
-				kill(pidmotorz, SIGINT);
+				kill(pidmotorx, SIGINT); // send signal to motor x
+				kill(pidmotorz, SIGINT); // send signal to motor z
 				break;
 
-				case 'e':
+				case 'e': // Emergency stop case
 				fprintf(fp, "\nEMERGENCY STOP SIGNAL IS SENT TO MOTORS\n\n");
 				fflush(fp);
-				kill(pidmotorx, SIGTERM);
-				kill(pidmotorz, SIGTERM);
+				kill(pidmotorx, SIGTERM); // send signal to motor x
+				kill(pidmotorz, SIGTERM); // send signal to motor z
 				break;
 				
 				default:
