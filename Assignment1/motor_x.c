@@ -14,7 +14,7 @@
 #define END 25 
 #define STEP 0.05
 // time in microseconds
-#define PAUSE 250000
+#define PAUSE 150000
 
 //initialize the temporary files
 char* f_motor_x = "/tmp/f_motor_x";
@@ -27,44 +27,25 @@ int fd_motor_x_to_insp;
 
 double position_x = 0;
 char choice_x;
+char choice_x_bef;
 char send[20];
-FILE *fp;
 
-// function that handles the RESET SIGNAL when user gives the command in the inspection console
-// when the signal comes, the signal is handled by this function which, step by step, makes the
-// motor x go towards its home position
+FILE *fp;
+time_t rawtime;
+struct tm * timeinfo;
+
+// function that handles the RESET SIGNAL when the user gives the command in the inspection console
+// this is done to react immediatly to the user command and sets the choice_x to 'r' 
+// it's made in order to make the signal handler as atomic as possible
 void sig_handler_reset(int signo)
 {
 	if (signo == SIGINT)
 	{
-		fprintf(fp, "\nRESET HANDLING STARTED (Motor X)\n\n");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sRESET HANDLING STARTED (Motor X)\n", asctime (timeinfo));
 		fflush(fp);
-		while(position_x >= HOME || signo == SIGTERM)
-		{
-			position_x = position_x-STEP;
-			float err= (((float)rand()/(float)RAND_MAX)*0.025)-0.0125;
-			position_x -= err;
-			sprintf(send, "%f", position_x);
-			write(fd_motor_x, &send, sizeof(send));
-			usleep(PAUSE);
-		}
-		if (position_x <= HOME)
-		{
-			position_x = HOME;
-			sprintf(send, "%f", position_x);
-			write(fd_motor_x, &send, sizeof(send));
-			usleep(PAUSE);
-		}
-		else
-		{
-			position_x = position_x;
-			sprintf(send, "%f", position_x);
-			write(fd_motor_x, &send, sizeof(send));
-			usleep(PAUSE);
-		}
-		choice_x = 'q';
-		fprintf(fp, "\nRESET HANDLING FINISHED (Motor X)\n\n");
-		fflush(fp);
+		choice_x = 'r';
 	}
 }	
 
@@ -75,10 +56,13 @@ void sig_handler_stop(int signo)
 {
 	if (signo == SIGTERM)
 	{
-		fprintf(fp, "\nEMERGENCY STOP!!! (Motor X)\n\n");
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
+		fprintf(fp, "%sEMERGENCY STOP!!! (Motor X)\n\n", asctime (timeinfo));
 		fflush(fp);
 		position_x = position_x;
 		choice_x = 'q';
+		choice_x_bef = 'q';
 	}
 }
 
@@ -104,7 +88,9 @@ int main()
     }
  	write(fd_motor_x, &pid, sizeof(pid));
  	close(fd_motor_x);
-	fprintf(fp, "Motor X PID is: %d", pid);
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
+	fprintf(fp, "%sMotor X PID is: %d\n\n", asctime (timeinfo), pid);
 	fflush(fp);
 	
 	// sending motor x PID to inspection console for signal handling
@@ -119,8 +105,10 @@ int main()
  	write(fd_motor_x_to_insp, &pid, sizeof(pid));
  	close(fd_motor_x_to_insp);
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that pipes used by motor x for sending and receive PIDS are open
-	fprintf(fp, "All pipes used by Motor X for sending and receiving PIDS are correctly open\n");
+	fprintf(fp, "%sAll pipes used by Motor X for sending and receiving PIDS are correctly open\n\n", asctime (timeinfo));
 	fflush(fp);
 	 
 	// SIGNAL HANDLING
@@ -154,19 +142,22 @@ int main()
         return -1;
     }
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that pipes used by motor x for sending positions and receive instructions are open
-	fprintf(fp, "All pipes used by Motor X for receiving instructions and sending positions are correctly open\n");
+	fprintf(fp, "%sAll pipes used by Motor X for receiving instructions and sending positions are correctly open\n\n", asctime (timeinfo));
 	fflush(fp);
 	
 	fd_set set;
-	struct timeval time; 
+	struct timeval time_s; 
+	bool print = false;
 
 	for (;;)
 	{
 		FD_ZERO(&set); // clears set
 		FD_SET(fd_comm_x, &set); // adds the file descriptor fd_comm_x to set
-		time.tv_sec = 0;
-		time.tv_usec = 0;
+		time_s.tv_sec = 0;
+		time_s.tv_usec = 0;
 		// select() allows a program to monitor multiple file descriptors,
         // waiting until one or more of the file descriptors become "ready"
         // for some class of I/O operation 
@@ -174,11 +165,13 @@ int main()
         // corresponding I/O operation without blocking.
 		// On success, select() returns the number of file descriptors contained
 		// in the three returned descriptor sets. On error returns -1
-		retval = select(fd_comm_x+1, &set, NULL, NULL, &time);
+		retval = select(fd_comm_x+1, &set, NULL, NULL, &time_s);
 		// handle select() error
 		if (retval == -1)
 		{
-			fprintf(fp, "Error in select() function");
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
+			fprintf(fp, "%sError in select() function", asctime (timeinfo));
 			fflush(fp);
 			perror("select()");
 			return -1;
@@ -189,6 +182,17 @@ int main()
 		{
 			// motor x reads the user's choice from command console
 			command = read(fd_comm_x, &choice_x, sizeof(choice_x));	
+		}
+		// decide if the state of the motor will be printed in log file
+		// if the command at the previous loop is different from the new loop, then
+		// it means that the user gave a command and it should be printed in che log file
+		if (choice_x != choice_x_bef)
+		{
+			print = true;
+		}
+		else
+		{
+			print = false;
 		}
 		// switch handles the decision
 		// if command did't change keeps doing what the last command was
@@ -201,8 +205,14 @@ int main()
 				position_x = HOME;
 				sprintf(send, "%f", position_x);
 				write(fd_motor_x, &send, sizeof(send));
-				fprintf(fp, "Motor x is in HOME position");
-				fflush(fp);
+				if (print)
+				{
+					time ( &rawtime );
+  					timeinfo = localtime ( &rawtime );
+					fprintf(fp, "%sMotor x is in HOME position\n\n", asctime (timeinfo));
+					fflush(fp);
+				}
+				choice_x_bef = 'a';
 			}
 			else   // if position is not home, move towards home
 			{  
@@ -211,8 +221,14 @@ int main()
 				position_x -= err;
 				sprintf(send, "%f", position_x);
 				write(fd_motor_x, &send, sizeof(send));
-				fprintf(fp, "Motor x is in moving left");
-				fflush(fp);
+				if (print)
+				{
+					time ( &rawtime );
+  					timeinfo = localtime ( &rawtime );
+					fprintf(fp, "%sMotor x is in moving left\n\n", asctime (timeinfo));
+					fflush(fp);
+				}
+				choice_x_bef = 'a';
 			}
 			break;
 				
@@ -222,8 +238,14 @@ int main()
 				position_x = END;
 				sprintf(send, "%f", position_x);
 				write(fd_motor_x, &send, sizeof(send));	
-				fprintf(fp, "Motor x is in END position");
-				fflush(fp);
+				if (print)
+				{
+					time ( &rawtime );
+  					timeinfo = localtime ( &rawtime );
+					fprintf(fp, "%sMotor x is in END position\n\n", asctime (timeinfo));
+					fflush(fp);
+				}
+				choice_x_bef = 'd';
 			}
 			else // if position is not end, move towards end
 			{	
@@ -232,8 +254,14 @@ int main()
 				position_x -= err;
 				sprintf(send, "%f", position_x);
 				write(fd_motor_x, &send, sizeof(send));
-				fprintf(fp, "Motor x is in moving right");
-				fflush(fp);
+				if (print)
+				{
+					time ( &rawtime );
+  					timeinfo = localtime ( &rawtime );
+					fprintf(fp, "%sMotor x is in moving right\n\n", asctime (timeinfo));
+					fflush(fp);
+				}
+				choice_x_bef = 'd';
 			}
 			break;
 				
@@ -241,10 +269,46 @@ int main()
 			position_x = position_x;
 			sprintf(send, "%f", position_x);
 			write(fd_motor_x, &send, sizeof(send));
-			fprintf(fp, "Motor x has been stopped!");
-			fflush(fp);
+			if (print)
+			{
+				time ( &rawtime );
+  				timeinfo = localtime ( &rawtime );
+				fprintf(fp, "%sMotor x has been stopped!\n\n", asctime (timeinfo));
+				fflush(fp);
+			}
+			choice_x_bef = 'q';
 			break;
-				
+
+		case 'r': // case in which the motor reset
+		// this is done in order to make the signal handler as atomic as possible
+			if (position_x >= HOME)
+			{
+				position_x = position_x-STEP;
+				float err= (((float)rand()/(float)RAND_MAX)*0.025)-0.0125;
+				position_x -= err;
+				sprintf(send, "%f", position_x);
+				write(fd_motor_x, &send, sizeof(send));
+				if (print)
+				{
+					fprintf(fp, "Motor x is RESETTING!\n\n");
+					fflush(fp);
+				}
+				choice_x_bef = 'r';
+			}
+			else
+			{
+				position_x = HOME;
+				sprintf(send, "%f", position_x);
+				write(fd_motor_x, &send, sizeof(send));
+				if (print)
+				{
+					fprintf(fp, "Motor x is in HOME position!\n\n");
+					fflush(fp);
+				}
+				choice_x_bef = 'r';
+			}
+			break; 
+
 		default: // if any command comes which is not w,s or z is handled by this
 			break;			 
 	 	}

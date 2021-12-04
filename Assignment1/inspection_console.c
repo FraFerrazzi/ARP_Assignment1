@@ -8,10 +8,14 @@
 #include <sys/types.h> 
 #include <time.h>
 
-#define PAUSE 250000
+void print_ui();
+
+#define PAUSE 150000
 
 int main()
 {
+	time_t rawtime;
+	struct tm * timeinfo;
 	// Open a file pointer named "logfileInspectionCons.txt" for writing (w+)
 	FILE *fp; 
 	fp = fopen("./logfile/logfileInspectionCons.txt", "w");
@@ -47,8 +51,6 @@ int main()
     }
  	read(fd_motor_x_to_insp, &pidmotorx, sizeof(pidmotorx));
  	close(fd_motor_x_to_insp);
- 	printf("pid motor x: %d\n", pidmotorx);
- 	fflush(stdout);
 
 	// get motor z PID for signal handling
 	int pidmotorz;
@@ -62,9 +64,7 @@ int main()
     }
  	read(fd_motor_z_to_insp, &pidmotorz, sizeof(pidmotorz));
  	close(fd_motor_z_to_insp);
- 	printf("pid motor z: %d\n", pidmotorz);
- 	fflush(stdout);
-
+	
 	// get watchdog's PID for signal handling
 	int pidwatchdog;
 	fd_insp = open(f_insp, O_RDONLY);
@@ -77,17 +77,19 @@ int main()
     }
  	read(fd_insp, &pidwatchdog, sizeof(pidwatchdog));
  	close(fd_insp);
- 	printf("pid watchdog: %d\n", pidwatchdog);
- 	fflush(stdout);
-
+	
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing PIDS in the log file
-	fprintf(fp, "Motor X PID is: %d\n", pidmotorx);
+	fprintf(fp, "%sMotor X PID is: %d\n", asctime (timeinfo), pidmotorx);
 	fprintf(fp, "Motor Z PID is: %d\n", pidmotorz);
-	fprintf(fp, "Watchdog PID is: %d\n", pidwatchdog);
+	fprintf(fp, "Watchdog PID is: %d\n\n", pidwatchdog);
 	fflush(fp);
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that pipes used by inspection console for sending and receive PIDS are open
-	fprintf(fp, "All pipes used by Inspection Console for sending and receiving PIDS are correctly open\n");
+	fprintf(fp, "%sAll pipes used by Inspection Console for sending and receiving PIDS are correctly open\n\n", asctime (timeinfo));
 	fflush(fp);
 
 	// open pipes to communicate with motors
@@ -108,22 +110,25 @@ int main()
         return -1;
     }
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that pipes used by inspection console for receiving positions are open
-	fprintf(fp, "All pipes used by inspection console for receiving positions are correctly open\n\n");
+	fprintf(fp, "%sAll pipes used by inspection console for receiving positions are correctly open\n\n", asctime (timeinfo));
 	fflush(fp);
 
-	// defining select function variables
+	// initialize variables
 	char comm_inspect;
-	int n;
+	int count;
+	int retval_s;
+	int retval;
 	fd_set fd_in;
-	int retval, retval_s;
 	fd_set fds;
-	float pos_x;
-	float pos_z;
+	float pos_x = 0;
+	float pos_z = 0;
 	char bufdispx[20];
 	char bufdispz[20];
 	struct timeval timeout;
-	struct timeval time;
+	struct timeval time_s;
 
 	for(;;)
 	{
@@ -136,7 +141,9 @@ int main()
 		// handle select() error
 		if (retval_s == -1)
 		{
-			fprintf(fp, "Error in select() function for input from inspection");
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
+			fprintf(fp, "%sError in select() function for input from inspection", asctime (timeinfo));
 			fflush(fp);
 			perror("select()");
 			return -1;
@@ -146,20 +153,26 @@ int main()
 		{
 			// if user types something in the inspection console, reset watchdog timer
 			kill(pidwatchdog, SIGUSR1);
-			fprintf(fp, "User typed something in the inspection console: SIGNAL IS SEND TO WATCHDOG TO RESET COUNTER\n");
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
+			fprintf(fp, "%sUser typed something in the inspection console: SIGNAL IS SEND TO WATCHDOG TO RESET COUNTER\n\n", asctime (timeinfo));
 			fflush(fp);
-			n = read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
+			read(STDIN_FILENO, &comm_inspect, sizeof(comm_inspect));
 			switch(comm_inspect)
 			{
 				case 'r': // Reset case
-				fprintf(fp, "\nRESET SIGNAL IS SENT TO MOTORS\n\n");
+				time ( &rawtime );
+  				timeinfo = localtime ( &rawtime );
+				fprintf(fp, "\n%sRESET SIGNAL IS SENT TO MOTORS\n\n", asctime (timeinfo));
 				fflush(fp);
 				kill(pidmotorx, SIGINT); // send signal to motor x
 				kill(pidmotorz, SIGINT); // send signal to motor z
 				break;
 
 				case 'e': // Emergency stop case
-				fprintf(fp, "\nEMERGENCY STOP SIGNAL IS SENT TO MOTORS\n\n");
+				time ( &rawtime );
+  				timeinfo = localtime ( &rawtime );
+				fprintf(fp, "\n%sEMERGENCY STOP SIGNAL IS SENT TO MOTORS\n\n", asctime (timeinfo));
 				fflush(fp);
 				kill(pidmotorx, SIGTERM); // send signal to motor x
 				kill(pidmotorz, SIGTERM); // send signal to motor z
@@ -172,22 +185,24 @@ int main()
 		}
 
 		int maxfd;
-		int res;
+		count ++;
 
 		FD_ZERO(&fds); // clear fds for the select
 		FD_SET(fd_motor_x, &fds);
 		FD_SET(fd_motor_z, &fds);
-		time.tv_sec = 0;
-		time.tv_usec = 0;
+		time_s.tv_sec = 0;
+		time_s.tv_usec = 0;
 
 		maxfd = fd_motor_x > fd_motor_z ? fd_motor_x : fd_motor_z;
 
 		// select() that handles positions sent from motor x and motor z
-		retval = select(maxfd+1, &fds, NULL, NULL, &time);
+		retval = select(maxfd+1, &fds, NULL, NULL, &time_s);
 		// handle select() error
 		if (retval == -1)
 		{
-			fprintf(fp, "Error in select() function for receiving position from motors");
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
+			fprintf(fp, "%sError in select() function for receiving position from motors\n\n", asctime (timeinfo));
 			fflush(fp);
 			perror("select()");
 			return -1;
@@ -195,21 +210,30 @@ int main()
 
 		if (FD_ISSET(fd_motor_x, &fds)) // if not zero, read from motor x buffer
 		{
-			res = read(fd_motor_x, bufdispx, sizeof(bufdispx));
+			read(fd_motor_x, bufdispx, sizeof(bufdispx));
 			pos_x = atof(bufdispx);
 		}
 
 		if (FD_ISSET(fd_motor_z, &fds)) // if not zero, read from motor z buffer
 		{
-			res = read(fd_motor_z, bufdispz, sizeof(bufdispz));
+			read(fd_motor_z, bufdispz, sizeof(bufdispz));
 			pos_z = atof(bufdispz);
 		}
+		// call the function for printing commands that user can use
+		print_ui();
 		printf("Motor X position: %f;        Motor Z position: %f;\n", pos_x, pos_z); // print positions in the inspection console
 		fflush(stdout);
-		fprintf(fp, "Motor X position: %f;        Motor Z position: %f;\n", pos_x, pos_z); // print positions in the inspection console file log
-		fflush(fp);
+		// printing the updated position of motors in the log file just once every seven times 
+		if (count%7 == 0)
+		{
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
+			fprintf(fp, "%sMotor X position: %f;        Motor Z position: %f;\n\n", asctime (timeinfo), pos_x, pos_z); // print positions in the inspection console file log
+			fflush(fp);
+			count = 0;
+		}
 		usleep(PAUSE);
-		system("clear");
+		printf("\e[1;1H\e[2J");
 	}
 	
 	close(fd_motor_x);
@@ -217,4 +241,14 @@ int main()
 	unlink(f_motor_x);
 	unlink(f_motor_z);
 	return 0;
+}
+
+
+// function that displays the possible commands that user can use
+// if user decides to use anything else, the switcher will handle the exception
+void print_ui()
+{
+	printf("R = RESET motors");
+	printf("        E = EMERGENCY STOP\n\n\n");
+	fflush(stdout);
 }

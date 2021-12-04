@@ -11,7 +11,10 @@
 #define N 60
 
 time_t last_sig;
+
 FILE *fp;
+time_t rawtime;
+struct tm * timeinfo;
 
 // signal handler in order to let watchdog know if a command arrived
 // on the command console
@@ -32,8 +35,10 @@ int main(int argc, char * argv[])
     	printf("Error opening the logfileMaster!");   
     	exit(1);             
    	}
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that watchdog is forked by master
-	fprintf(fp, "WATCHDOG IS FORKED BY MASTER\n\n");
+	fprintf(fp, "%sWATCHDOG IS FORKED BY MASTER\n\n", asctime (timeinfo));
 	fflush(fp);
 
 	// initialize file descriptor for pipe
@@ -50,10 +55,10 @@ int main(int argc, char * argv[])
 
 	// getting watchdog PID
 	int wd_pid=getpid();
-	printf("watchdog says: my pid is %d\n", wd_pid);
-	fflush(stdout);
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing in the log file that watchdog got its PID
-	fprintf(fp, "Watchdog pid is: %d\n", wd_pid);
+	fprintf(fp, "%sWatchdog pid is: %d\n\n", asctime (timeinfo), wd_pid);
 	fflush(fp);
 	
 	// importing motor x pid and display it on watchdog konsole	
@@ -61,6 +66,8 @@ int main(int argc, char * argv[])
  	fd_motor_x = open(f_motor_x, O_RDONLY);
 	if (fd_motor_x < 0) 
 	{
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		fprintf(fp, "Error opening motor x pipe");
 		fflush(fp);
         perror("f_motor_x");
@@ -74,6 +81,8 @@ int main(int argc, char * argv[])
 	fd_motor_z = open(f_motor_z, O_RDONLY);
 	if (fd_motor_z < 0) 
 	{
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		fprintf(fp, "Error opening motor z pipe");
 		fflush(fp);
         perror("f_motor_z");
@@ -86,6 +95,8 @@ int main(int argc, char * argv[])
 	fd_comm = open(f_comm, O_WRONLY);
 	if (fd_comm < 0) 
 	{
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		fprintf(fp, "Error opening command pipe");
 		fflush(fp);
         perror("f_comm");
@@ -98,6 +109,8 @@ int main(int argc, char * argv[])
 	fd_insp = open(f_insp, O_WRONLY);
 	if (fd_insp < 0) 
 	{
+		time ( &rawtime );
+  		timeinfo = localtime ( &rawtime );
 		fprintf(fp, "Error opening inspection pipe");
 		fflush(fp);
         perror("f_insp");
@@ -106,12 +119,13 @@ int main(int argc, char * argv[])
 	write(fd_insp, &wd_pid, sizeof(wd_pid));
 	close(fd_insp);
 
+	time ( &rawtime );
+  	timeinfo = localtime ( &rawtime );
 	// printing all PIDS in log file
-	fprintf(fp, "PID Motor X: %d\n", pidmotorx);
-	fprintf(fp, "PID Motor Z: %d\n", pidmotorz);
- 	fflush(fp);
+	fprintf(fp, "%sPID Motor X: %d\n\n", asctime (timeinfo), pidmotorx);
+	fprintf(fp, "%sPID Motor Z: %d\n\n", asctime (timeinfo), pidmotorz);
 	// printing in the log file all pipes used by watchdog are open
-	fprintf(fp, "All pipes used by Watchdog are correctly open\n");
+	fprintf(fp, "%sAll pipes used by Watchdog are correctly open\n\n", asctime (timeinfo));
 	fflush(fp);
 	
 	// SIGNAL HANDLING
@@ -133,10 +147,12 @@ int main(int argc, char * argv[])
 	{
 		sleep(1);
 		fflush(stdout);
-		if ( difftime(time(NULL),last_sig) > N)
+		if ( difftime(time(NULL),last_sig) == N)
 		{
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
 			// printing in the log file that nothing has happend for N seconds and send signals to motors
-			fprintf(fp, "\nNothing has happened for %d seconds, Watchdog resets all the processes!\n", N);
+			fprintf(fp, "\n\n%sNothing has happened for %d seconds, Watchdog resets all the processes!\n", asctime (timeinfo), N);
 			fflush(fp);
 
 			kill(pidmotorx, SIGINT);
@@ -149,11 +165,13 @@ int main(int argc, char * argv[])
 		else if ( difftime(time(NULL),last_sig) == 0)
 		{
 			counter = 0;
+			time ( &rawtime );
+  			timeinfo = localtime ( &rawtime );
 			// printing in log file that user gave a command
-			fprintf(fp, "\nUser gave a command, counter is setted to %d\n", counter);
+			fprintf(fp, "\n\n%sUser gave a command, counter is setted to %d\n", asctime (timeinfo), counter);
 			fflush(fp);
 		}
-		else
+		else if ( difftime(time(NULL),last_sig) < N)
 		{
 			// printing in log file that counter has been increased
 			fprintf(fp, "[%d] ", counter);
