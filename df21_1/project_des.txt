@@ -1,0 +1,26 @@
+Assignment 1 Advanced and Robot Programming
+
+Group: DF21  
+Members: Davide Leo Parisi   S4329668
+         Francesco Ferrazzi   S5262829
+
+The opportunity that the program guarantees is to have a simple low-level solution to control the handling of a hoist that has two degrees of freedom: x-axis and z-axis. 
+The goal is to achieve a pseudo-real simulation of a hoist that can be used in real-life applications.
+It could be possible to attach a command board and control the behavior by pressing buttons instead of physically acting on the actuators, reducing risks of any kind for the user.
+The control of the hoist is possible by typing from the keyboard of the computer in the command console. 
+The real-time state of the machine is reported in the inspection console to let the user have a precise vision of what is happening step by step. 
+Opening the log files of each process allows the user to have a clear view of what happens during the execution of the program. In this way, it is possible to manage any situation or error that the user wants to check. 
+During the first stage of the project, the team thought of all possible cases that needed to be handled. Writing the pseudo-code and dividing all tasks was essential for developing the desired outcome. 
+This allowed achieving the mentality to work on the code, knowing the problems that required a solution. 
+In the end, the assignment counts six processes: master, command_console, inspection_console, motor_x, motor_z, and watchdog. The processes communicate with each other to exchange information and guarantee the desired behavior. 
+The communication between processes is implemented with named pipes. Signals manage possible dangerous situations in which the program needs to react immediately. Signals are used when a program needs to know if an event happened and no data is needed as well.
+The last stage was testing the code in all possible situations that we could think of, finishing the error handling, and creating the bash scripts.
+During the tests phase, the team concluded that the program works properly, with good performance. The program always does what the user wants according to the requests made by the teacher.
+
+To install the project type in the shell: ./install.sh <namepath> 
+To read information about the project type in the shell: ./help.sh <namepath>
+To run the program type in the shell: ./running.sh <namepath>
+(where name path is the desired path chosen by user)
+
+We would like to have feedback. We ask the user to run our program meticulously, trying to find possible errors.
+If there is any behavior that is not correctly developed, we please you to contact us to let us improve from our mistakes. Our emails are S5262829@studenti.unige.it and S4329668@studenti.unige.it.
